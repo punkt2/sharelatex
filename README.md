@@ -1,4 +1,4 @@
-ShareLaTeX
+ShareLaTeX with LDAP Authentication
 ==========
 
 [ShareLaTeX](https://www.sharelatex.com) is an open-source online real-time collaborative LaTeX editor. We run a hosted version at http://www.sharelatex.com, but you can also run your own local version, and contribute to the development of ShareLaTeX.
