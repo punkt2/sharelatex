@@ -10,8 +10,8 @@ async = require "async"
 
 SERVICES = [{
 	name: "web"
-	repo: "https://github.com/sharelatex/web-sharelatex.git"
-	version: "v0.1.2"
+	repo: "https://github.com/punkt2/web-sharelatex.git"
+	version: "ldap-auth"
 }, {
 	name: "real-time"
 	repo: "https://github.com/sharelatex/real-time-sharelatex.git"
