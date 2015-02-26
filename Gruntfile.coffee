@@ -7,6 +7,8 @@ semver = require "semver"
 knox = require "knox"
 crypto = require "crypto"
 async = require "async"
+settings = require("settings-sharelatex")
+
 
 SERVICES = [{
 	name: "web"
@@ -15,39 +17,39 @@ SERVICES = [{
 }, {
 	name: "real-time"
 	repo: "https://github.com/sharelatex/real-time-sharelatex.git"
-	version: "v0.1.2"
+	version: "v0.1.3"
 }, {
 	name: "document-updater"
 	repo: "https://github.com/sharelatex/document-updater-sharelatex.git"
-	version: "v0.1.2"
+	version: "v0.1.3"
 }, {
 	name: "clsi"
 	repo: "https://github.com/sharelatex/clsi-sharelatex.git"
-	version: "v0.1.2"
+	version: "v0.1.3"
 }, {
 	name: "filestore"
 	repo: "https://github.com/sharelatex/filestore-sharelatex.git"
-	version: "v0.1.2"
+	version: "v0.1.3"
 }, {
 	name: "track-changes"
 	repo: "https://github.com/sharelatex/track-changes-sharelatex.git"
-	version: "v0.1.2"
+	version: "v0.1.3"
 }, {
 	name: "docstore"
 	repo: "https://github.com/sharelatex/docstore-sharelatex.git"
-	version: "v0.1.2"
+	version: "v0.1.3"
 }, {
 	name: "chat"
 	repo: "https://github.com/sharelatex/chat-sharelatex.git"
-	version: "v0.1.2"
+	version: "v0.1.3"
 }, {
 	name: "tags"
 	repo: "https://github.com/sharelatex/tags-sharelatex.git"
-	version: "v0.1.2"
+	version: "v0.1.3"
 }, {
 	name: "spelling"
 	repo: "https://github.com/sharelatex/spelling-sharelatex.git"
-	version: "v0.1.2"
+	version: "v0.1.3"
 }]
 
 module.exports = (grunt) ->
@@ -56,6 +58,7 @@ module.exports = (grunt) ->
 	grunt.loadNpmTasks 'grunt-available-tasks'
 	grunt.loadNpmTasks 'grunt-concurrent'
 	grunt.loadNpmTasks "grunt-contrib-coffee"
+	grunt.loadNpmTasks "grunt-shell"
 
 
 	execute = {}
@@ -83,7 +86,9 @@ module.exports = (grunt) ->
 				options:
 					bare:true
 
-
+		shell:
+			migrate:
+				command: "./node_modules/east/bin/east migrate --adapter east-mongo --url #{settings?.mongo?.url}"
 
 		availabletasks:
 			tasks:
@@ -162,7 +167,7 @@ module.exports = (grunt) ->
 		Helpers.buildUpstartScripts()
 
 
-	grunt.registerTask 'migrate', 'run migrations', ['coffee:migrate']
+	#grunt.registerTask 'migrate', "compile migrations and run them", ['coffee:migrate', 'shell:migrate']
 
 
 	Helpers =
