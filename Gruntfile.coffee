@@ -17,39 +17,39 @@ SERVICES = [{
 }, {
 	name: "real-time"
 	repo: "https://github.com/sharelatex/real-time-sharelatex.git"
-	version: "v0.1.3"
+	version: "v0.1.4"
 }, {
 	name: "document-updater"
 	repo: "https://github.com/sharelatex/document-updater-sharelatex.git"
-	version: "v0.1.3"
+	version: "v0.1.4"
 }, {
 	name: "clsi"
 	repo: "https://github.com/sharelatex/clsi-sharelatex.git"
-	version: "v0.1.3"
+	version: "v0.1.4"
 }, {
 	name: "filestore"
 	repo: "https://github.com/sharelatex/filestore-sharelatex.git"
-	version: "v0.1.3"
+	version: "v0.1.4"
 }, {
 	name: "track-changes"
 	repo: "https://github.com/sharelatex/track-changes-sharelatex.git"
-	version: "v0.1.3"
+	version: "v0.1.4"
 }, {
 	name: "docstore"
 	repo: "https://github.com/sharelatex/docstore-sharelatex.git"
-	version: "v0.1.3"
+	version: "v0.1.4"
 }, {
 	name: "chat"
 	repo: "https://github.com/sharelatex/chat-sharelatex.git"
-	version: "v0.1.3"
+	version: "v0.1.4"
 }, {
 	name: "tags"
 	repo: "https://github.com/sharelatex/tags-sharelatex.git"
-	version: "v0.1.3"
+	version: "v0.1.4"
 }, {
 	name: "spelling"
 	repo: "https://github.com/sharelatex/spelling-sharelatex.git"
-	version: "v0.1.3"
+	version: "v0.1.4"
 }]
 
 module.exports = (grunt) ->
@@ -161,8 +161,6 @@ module.exports = (grunt) ->
 		Helpers.checkMake @async()
 	grunt.registerTask "check", "Check that you have the required dependencies installed", ["check:redis", "check:latexmk", "check:s3", "check:fs", "check:aspell"]
 
-	grunt.registerTask "build:deb", "Build an installable .deb file from the current directory", () ->
-		Helpers.buildDeb @async()
 	grunt.registerTask "build:upstart_scripts", "Create upstart scripts for each service", () ->
 		Helpers.buildUpstartScripts()
 
@@ -457,93 +455,7 @@ module.exports = (grunt) ->
 					return callback()
 
 		buildUpstartScripts: () ->
-			template = fs.readFileSync("package/upstart/sharelatex-template").toString()
+			template = fs.readFileSync("package/upstart/sharelatex-template.conf").toString()
 			for service in SERVICES
-				fs.writeFileSync "package/upstart/sharelatex-#{service.name}", template.replace(/__SERVICE__/g, service.name)
-
-		buildPackageSettingsFile: () ->
-			config = fs.readFileSync("config/settings.development.coffee.example").toString()
-			config = config.replace /DATA_DIR.*/, "DATA_DIR = '/var/lib/sharelatex/data'"
-			config = config.replace /TMP_DIR.*/, "TMP_DIR = '/var/lib/sharelatex/tmp'"
-			fs.writeFileSync "package/config/settings.coffee", config
-
-		buildDeb: (callback = (error) ->) ->
-			command = ["-s", "dir", "-t", "deb", "-n", "sharelatex", "-v", "0.0.1", "--verbose"]
-			command.push(
-				"--maintainer", "ShareLaTeX <team@sharelatex.com>"
-				"--config-files", "/etc/sharelatex/settings.coffee"
-				"--config-files", "/etc/nginx/conf.d/sharelatex.conf"
-				"--directories",  "/var/lib/sharelatex"
-				"--directories",  "/var/log/sharelatex"
-			)
-
-			command.push(
-				"--depends", "redis-server > 2.6.12"
-				"--depends", "mongodb-org > 2.4.0"
-				"--depends", "nodejs > 0.10.0"
-			)
-			
-			@buildPackageSettingsFile()
-
-			@buildUpstartScripts()
-			for service in SERVICES
-				command.push(
-					"--deb-upstart", "package/upstart/sharelatex-#{service.name}"
-				)
-
-			after_install_script = """
-				#!/bin/sh
-				# Create random secret keys (twice, once for http auth pass, once for cookie secret).
-				sed -i "0,/CRYPTO_RANDOM/s/CRYPTO_RANDOM/$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 64 | head -n 1)/" /etc/sharelatex/settings.coffee
-				sed -i "0,/CRYPTO_RANDOM/s/CRYPTO_RANDOM/$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 64 | head -n 1)/" /etc/sharelatex/settings.coffee
-				
-				sudo adduser --system --group --home /var/www/sharelatex --no-create-home sharelatex
-
-				mkdir -p /var/log/sharelatex
-				chown sharelatex:sharelatex /var/log/sharelatex
-				
-				mkdir -p /var/lib/sharelatex
-
-			"""
-
-			for dir in ["data/user_files", "tmp/uploads", "data/compiles", "data/cache", "tmp/dumpFolder"]
-				after_install_script += """
-					mkdir -p /var/lib/sharelatex/#{dir}
-					
-				"""
-			
-			after_install_script += """
-				chown -R sharelatex:sharelatex /var/lib/sharelatex
-				
-			"""	
-
-			for service in SERVICES
-				after_install_script += "service sharelatex-#{service.name} restart\n"
-			fs.writeFileSync "package/scripts/after_install.sh", after_install_script
-			command.push("--after-install", "package/scripts/after_install.sh")
-
-			command.push("--exclude", "**/.git")
-			command.push("--exclude", "**/node_modules/grunt-*")
-			for path in ["filestore/user_files", "filestore/uploads", "clsi/cache", "clsi/compiles"]
-				command.push "--exclude", path
-
-			for service in SERVICES
-				command.push "#{service.name}=/var/www/sharelatex/"
-
-			command.push(
-				"package/config/settings.coffee=/etc/sharelatex/settings.coffee"
-				"package/nginx/sharelatex=/etc/nginx/conf.d/sharelatex.conf"
-			)
-			console.log "fpm " + command.join(" ")
-			proc = spawn "fpm", command, stdio: "inherit"
-			proc.on "close", (code) ->
-				if code != 0
-					callback(new Error("exit code: #{code}"))
-				else
-					callback()
-
-			
-
-
-
+				fs.writeFileSync "package/upstart/sharelatex-#{service.name}.conf", template.replace(/__SERVICE__/g, service.name)
 
